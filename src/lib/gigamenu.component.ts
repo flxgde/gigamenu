@@ -1,0 +1,280 @@
+import {
+  Component,
+  signal,
+  computed,
+  effect,
+  ElementRef,
+  viewChild,
+  contentChild,
+  HostListener,
+  PLATFORM_ID,
+  Inject,
+  TemplateRef,
+} from '@angular/core';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
+import { GigamenuService } from './gigamenu.service';
+import { FrecencyService } from './frecency.service';
+import { GigamenuItem } from './types';
+import {
+  GigamenuItemTemplate,
+  GigamenuEmptyTemplate,
+  GigamenuHeaderTemplate,
+  GigamenuFooterTemplate,
+  GigamenuPanelTemplate,
+  GigamenuItemContext,
+  GigamenuEmptyContext,
+  GigamenuHeaderContext,
+  GigamenuFooterContext,
+  GigamenuPanelContext,
+} from './gigamenu-templates.directive';
+
+@Component({
+  selector: 'gm-gigamenu',
+  standalone: true,
+  imports: [NgTemplateOutlet],
+  templateUrl: 'gigamenu.component.html',
+  styles: `
+    :host {
+      display: contents;
+    }
+  `,
+})
+export class GigamenuComponent {
+  private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+  private readonly listContainer = viewChild<ElementRef<HTMLDivElement>>('listContainer');
+  private readonly isBrowser: boolean;
+
+  // Template queries
+  protected readonly itemTemplate = contentChild(GigamenuItemTemplate);
+  protected readonly emptyTemplate = contentChild(GigamenuEmptyTemplate);
+  protected readonly headerTemplate = contentChild(GigamenuHeaderTemplate);
+  protected readonly footerTemplate = contentChild(GigamenuFooterTemplate);
+  protected readonly panelTemplate = contentChild(GigamenuPanelTemplate);
+
+  protected readonly query = signal('');
+  protected readonly selectedIndex = signal(0);
+
+  protected readonly filteredItems = computed(() => {
+    const q = this.query().toLowerCase().trim();
+    const items = this.service.items();
+    const maxResults = this.service.config().maxResults ?? 10;
+
+    if (!q) {
+      // No query: sort by frecency scores from empty searches
+      const scores = this.frecency.getScores('');
+      return this.sortByFrecency(items, scores).slice(0, maxResults);
+    }
+
+    // Filter matching items
+    const matched = items.filter((item) => this.matchesQuery(item, q));
+
+    // Sort by frecency for this search term
+    const scores = this.frecency.getScores(q);
+    return this.sortByFrecency(matched, scores).slice(0, maxResults);
+  });
+
+  constructor(
+    protected readonly service: GigamenuService,
+    private readonly frecency: FrecencyService,
+    @Inject(PLATFORM_ID) platformId: object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+
+    effect(() => {
+      if (this.service.isOpen() && this.isBrowser) {
+        setTimeout(() => this.searchInput()?.nativeElement.focus(), 0);
+      }
+    });
+
+    effect(() => {
+      const items = this.filteredItems();
+      const q = this.query();
+
+      // Check for auto-select based on frecency
+      if (q && items.length > 0) {
+        const topMatch = this.frecency.getTopMatch(q);
+        if (topMatch) {
+          const idx = items.findIndex((item) => item.id === topMatch);
+          if (idx !== -1) {
+            this.selectedIndex.set(idx);
+            return;
+          }
+        }
+      }
+
+      this.selectedIndex.set(0);
+    });
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onGlobalKeydown(event: KeyboardEvent): void {
+    if (!this.isBrowser) return;
+
+    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+      event.preventDefault();
+      this.service.toggle();
+      return;
+    }
+
+    if (event.key === '/' && !this.isInputFocused()) {
+      event.preventDefault();
+      this.service.open();
+      return;
+    }
+
+    if (event.key === 'Escape' && this.service.isOpen()) {
+      event.preventDefault();
+      this.close();
+    }
+  }
+
+  protected onInputKeydown(event: KeyboardEvent): void {
+    const items = this.filteredItems();
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.selectedIndex.update((i) => Math.min(i + 1, items.length - 1));
+        this.scrollSelectedIntoView();
+        break;
+
+      case 'ArrowUp':
+        event.preventDefault();
+        this.selectedIndex.update((i) => Math.max(i - 1, 0));
+        this.scrollSelectedIntoView();
+        break;
+
+      case 'Enter':
+        event.preventDefault();
+        const selected = items[this.selectedIndex()];
+        if (selected) {
+          this.executeItem(selected);
+        }
+        break;
+
+      case 'Escape':
+        event.preventDefault();
+        this.close();
+        break;
+    }
+  }
+
+  private scrollSelectedIntoView(): void {
+    const container = this.listContainer()?.nativeElement;
+    if (!container) return;
+
+    const selectedButton = container.querySelector(
+      `[data-index="${this.selectedIndex()}"]`
+    ) as HTMLElement | null;
+
+    if (selectedButton) {
+      selectedButton.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  protected onQueryChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.query.set(value);
+  }
+
+  protected onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.close();
+    }
+  }
+
+  protected executeItem(item: GigamenuItem): void {
+    // Record the selection for frecency learning
+    const currentQuery = this.query();
+    this.frecency.recordSelection(currentQuery, item.id);
+
+    this.close();
+    item.action();
+  }
+
+  // Template context getters
+  protected getItemContext(item: GigamenuItem, index: number): GigamenuItemContext {
+    return {
+      $implicit: item,
+      index,
+      selected: this.selectedIndex() === index,
+    };
+  }
+
+  protected getEmptyContext(): GigamenuEmptyContext {
+    return {
+      $implicit: this.query(),
+    };
+  }
+
+  protected getHeaderContext(): GigamenuHeaderContext {
+    return {
+      $implicit: this.query(),
+      onQueryChange: (value: string) => this.query.set(value),
+      onKeydown: (event: KeyboardEvent) => this.onInputKeydown(event),
+      placeholder: this.service.config().placeholder ?? '',
+    };
+  }
+
+  protected getFooterContext(): GigamenuFooterContext {
+    return {
+      $implicit: this.filteredItems().length,
+      total: this.service.items().length,
+    };
+  }
+
+  protected getPanelContext(): GigamenuPanelContext {
+    return {
+      $implicit: this.filteredItems(),
+      query: this.query(),
+      selectedIndex: this.selectedIndex(),
+      executeItem: (item: GigamenuItem) => this.executeItem(item),
+      setSelectedIndex: (index: number) => this.selectedIndex.set(index),
+      setQuery: (query: string) => this.query.set(query),
+      close: () => this.close(),
+      placeholder: this.service.config().placeholder ?? '',
+    };
+  }
+
+  private close(): void {
+    this.service.close();
+    this.query.set('');
+    this.selectedIndex.set(0);
+  }
+
+  private sortByFrecency(items: GigamenuItem[], scores: Map<string, number>): GigamenuItem[] {
+    if (scores.size === 0) return items;
+
+    return [...items].sort((a, b) => {
+      const scoreA = scores.get(a.id) ?? 0;
+      const scoreB = scores.get(b.id) ?? 0;
+      return scoreB - scoreA;
+    });
+  }
+
+  private matchesQuery(item: GigamenuItem, query: string): boolean {
+    const searchableText = [
+      item.label,
+      item.description,
+      ...(item.keywords ?? []),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    const words = query.split(/\s+/);
+    return words.every((word) => searchableText.includes(word));
+  }
+
+  private isInputFocused(): boolean {
+    const activeElement = document.activeElement;
+    if (!activeElement) return false;
+
+    const tagName = activeElement.tagName.toLowerCase();
+    return (
+      tagName === 'input' ||
+      tagName === 'textarea' ||
+      (activeElement as HTMLElement).isContentEditable
+    );
+  }
+}
