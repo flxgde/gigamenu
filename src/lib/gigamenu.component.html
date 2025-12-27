@@ -40,15 +40,25 @@
           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
         />
       </svg>
-      <input
-        #searchInput
-        type="text"
-        [placeholder]="service.config().placeholder"
-        [value]="query()"
-        (input)="onQueryChange($event)"
-        (keydown)="onInputKeydown($event)"
-        class="flex-1 bg-transparent px-3 py-4 text-base text-neutral-900 placeholder-neutral-400 outline-none dark:text-neutral-100"
-      />
+      <div class="relative flex-1">
+        <!-- Styled overlay for syntax highlighting -->
+        <div
+          class="pointer-events-none absolute inset-0 flex items-center px-3 py-4 text-base"
+          aria-hidden="true"
+        >
+          <span class="text-neutral-900 dark:text-neutral-100">{{ searchTerm() }}</span>@if (args()) {<span class="text-neutral-900 dark:text-neutral-100">{{ service.config().argSeparator }}</span><span class="text-purple-600 dark:text-purple-400">{{ args() }}</span>}
+        </div>
+        <!-- Transparent input on top -->
+        <input
+          #searchInput
+          type="text"
+          [placeholder]="service.config().placeholder"
+          [value]="query()"
+          (input)="onQueryChange($event)"
+          (keydown)="onInputKeydown($event)"
+          class="relative z-10 w-full bg-transparent px-3 py-4 text-base text-transparent caret-neutral-900 placeholder-neutral-400 outline-none dark:caret-neutral-100"
+        />
+      </div>
       <kbd
         class="rounded border border-neutral-200 bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
       >

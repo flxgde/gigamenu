@@ -10,7 +10,8 @@ export interface GigamenuItem {
   iconClass?: string;
   keywords?: string[];
   category: GigamenuItemCategory;
-  action: () => void;
+  /** Action to execute. Receives args string if user typed text after the separator. */
+  action: (args?: string) => void;
 }
 
 export interface GigamenuPage extends Omit<GigamenuItem, 'category' | 'action'> {
@@ -25,12 +26,15 @@ export interface GigamenuConfig {
   placeholder?: string;
   maxResults?: number;
   autoDiscoverRoutes?: boolean;
+  /** Separator between search query and arguments (default: ' ') */
+  argSeparator?: string;
 }
 
 export const DEFAULT_CONFIG: GigamenuConfig = {
   placeholder: 'Search pages and commands...',
   maxResults: 10,
   autoDiscoverRoutes: true,
+  argSeparator: ' ',
 };
 
 /**

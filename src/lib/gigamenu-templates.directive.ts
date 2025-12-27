@@ -25,8 +25,12 @@ export interface GigamenuEmptyContext {
  * Context provided to the header template.
  */
 export interface GigamenuHeaderContext {
-  /** The current search query */
+  /** The current full query */
   $implicit: string;
+  /** The search term (before separator) */
+  searchTerm: string;
+  /** The arguments (after separator) */
+  args: string;
   /** Callback to update the query */
   onQueryChange: (value: string) => void;
   /** Callback for keydown events */
@@ -145,8 +149,12 @@ export class GigamenuFooterTemplate {
 export interface GigamenuPanelContext {
   /** Filtered items to display */
   $implicit: GigamenuItem[];
-  /** Current search query */
+  /** Current full query */
   query: string;
+  /** The search term (before separator) */
+  searchTerm: string;
+  /** The arguments (after separator) */
+  args: string;
   /** Currently selected index */
   selectedIndex: number;
   /** Callback to execute an item */

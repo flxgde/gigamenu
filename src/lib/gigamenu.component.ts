@@ -54,22 +54,40 @@ export class GigamenuComponent {
   protected readonly query = signal('');
   protected readonly selectedIndex = signal(0);
 
+  /** Parsed search term (before first separator) */
+  protected readonly searchTerm = computed(() => {
+    const q = this.query();
+    const separator = this.service.config().argSeparator ?? ' ';
+    const sepIndex = q.indexOf(separator);
+    if (sepIndex === -1) return q;
+    return q.substring(0, sepIndex);
+  });
+
+  /** Parsed arguments (after first separator) */
+  protected readonly args = computed(() => {
+    const q = this.query();
+    const separator = this.service.config().argSeparator ?? ' ';
+    const sepIndex = q.indexOf(separator);
+    if (sepIndex === -1) return '';
+    return q.substring(sepIndex + separator.length);
+  });
+
   protected readonly filteredItems = computed(() => {
-    const q = this.query().toLowerCase().trim();
+    const searchTerm = this.searchTerm().toLowerCase().trim();
     const items = this.service.items();
     const maxResults = this.service.config().maxResults ?? 10;
 
-    if (!q) {
+    if (!searchTerm) {
       // No query: sort by frecency scores from empty searches
       const scores = this.frecency.getScores('');
       return this.sortByFrecency(items, scores).slice(0, maxResults);
     }
 
-    // Filter matching items
-    const matched = items.filter((item) => this.matchesQuery(item, q));
+    // Filter matching items using only search term (not args)
+    const matched = items.filter((item) => this.matchesQuery(item, searchTerm));
 
     // Sort by frecency for this search term
-    const scores = this.frecency.getScores(q);
+    const scores = this.frecency.getScores(searchTerm);
     return this.sortByFrecency(matched, scores).slice(0, maxResults);
   });
 
@@ -88,11 +106,11 @@ export class GigamenuComponent {
 
     effect(() => {
       const items = this.filteredItems();
-      const q = this.query();
+      const searchTerm = this.searchTerm();
 
       // Check for auto-select based on frecency
-      if (q && items.length > 0) {
-        const topMatch = this.frecency.getTopMatch(q);
+      if (searchTerm && items.length > 0) {
+        const topMatch = this.frecency.getTopMatch(searchTerm);
         if (topMatch) {
           const idx = items.findIndex((item) => item.id === topMatch);
           if (idx !== -1) {
@@ -184,12 +202,15 @@ export class GigamenuComponent {
   }
 
   protected executeItem(item: GigamenuItem): void {
-    // Record the selection for frecency learning
-    const currentQuery = this.query();
-    this.frecency.recordSelection(currentQuery, item.id);
+    // Record the selection for frecency learning (use search term, not full query)
+    const searchTerm = this.searchTerm();
+    this.frecency.recordSelection(searchTerm, item.id);
+
+    // Get args before closing (which resets query)
+    const args = this.args() || undefined;
 
     this.close();
-    item.action();
+    item.action(args);
   }
 
   // Template context getters
@@ -210,6 +231,8 @@ export class GigamenuComponent {
   protected getHeaderContext(): GigamenuHeaderContext {
     return {
       $implicit: this.query(),
+      searchTerm: this.searchTerm(),
+      args: this.args(),
       onQueryChange: (value: string) => this.query.set(value),
       onKeydown: (event: KeyboardEvent) => this.onInputKeydown(event),
       placeholder: this.service.config().placeholder ?? '',
@@ -227,6 +250,8 @@ export class GigamenuComponent {
     return {
       $implicit: this.filteredItems(),
       query: this.query(),
+      searchTerm: this.searchTerm(),
+      args: this.args(),
       selectedIndex: this.selectedIndex(),
       executeItem: (item: GigamenuItem) => this.executeItem(item),
       setSelectedIndex: (index: number) => this.selectedIndex.set(index),
