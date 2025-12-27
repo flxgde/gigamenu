@@ -93,7 +93,9 @@
             : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50')
             "
           >
-            @if (item.icon) {
+            @if (item.iconClass) {
+            <i [class]="item.iconClass + ' text-lg text-neutral-600 dark:text-neutral-300'"></i>
+            } @else if (item.icon) {
             <span class="text-lg">{{ item.icon }}</span>
             } @else {
             <span

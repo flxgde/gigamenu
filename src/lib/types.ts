@@ -4,7 +4,10 @@ export interface GigamenuItem {
   id: string;
   label: string;
   description?: string;
+  /** Emoji or text icon */
   icon?: string;
+  /** CSS class for icon libraries (e.g., 'pi pi-home', 'fa fa-home') */
+  iconClass?: string;
   keywords?: string[];
   category: GigamenuItemCategory;
   action: () => void;
@@ -39,6 +42,7 @@ export interface CommandDefinition {
   readonly label: string;
   readonly description?: string;
   readonly icon?: string;
+  readonly iconClass?: string;
   readonly keywords?: string[];
   readonly shortcut?: string;
   execute(): void;
@@ -74,6 +78,7 @@ export interface MappedPage {
   label?: string;
   description?: string;
   icon?: string;
+  iconClass?: string;
   keywords?: string[];
 }
 
