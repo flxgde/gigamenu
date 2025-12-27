@@ -1,5 +1,5 @@
 {
-  "name": "gigamenu",
+  "name": "@flxgde/gigamenu",
   "version": "0.0.1",
   "description": "A keyboard-driven command palette menu for Angular applications",
   "keywords": [
@@ -14,11 +14,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USERNAME/gigamenu"
+    "url": "https://github.com/flxgde/gigamenu"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/gigamenu#readme",
+  "homepage": "https://github.com/flxgde/gigamenu#readme",
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/gigamenu/issues"
+    "url": "https://github.com/flxgde/gigamenu/issues"
   },
   "scripts": {
     "build": "ng-packagr",
