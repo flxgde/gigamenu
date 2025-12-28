@@ -21,8 +21,10 @@
     "url": "https://github.com/flxgde/gigamenu/issues"
   },
   "scripts": {
-    "build": "ng-packagr",
-    "build:prod": "ng-packagr -c tsconfig.lib.prod.json"
+    "build:css": "npx @tailwindcss/cli -i ./src/styles.css -o ./dist/gigamenu/styles.css --minify",
+    "build:lib": "ng-packagr",
+    "build": "npm run build:lib && npm run build:css",
+    "build:prod": "ng-packagr -c tsconfig.lib.prod.json && npm run build:css"
   },
   "sideEffects": false,
   "peerDependencies": {
@@ -31,9 +33,10 @@
     "@angular/router": "^21.0.0"
   },
   "devDependencies": {
-    "ng-packagr": "^21.0.0",
     "@angular/compiler": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
+    "ng-packagr": "^21.0.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "~5.9.2"
   }
 }
