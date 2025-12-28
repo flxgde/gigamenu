@@ -27,23 +27,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare release version
         id: version
         run: |
+          # Remove -snapshot suffix if present
+          CURRENT=$(node -p "require('./package.json').version")
+          if [[ "$CURRENT" == *-snapshot* ]]; then
+            BASE_VERSION="${CURRENT%-snapshot*}"
+            npm version $BASE_VERSION --no-git-tag-version
+          fi
+          # Bump version
           npm version ${{ inputs.version }} --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Commit and tag
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        working-directory: dist/gigamenu
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit release
         run: |
           git add package.json
           git commit -m "Release v${{ steps.version.outputs.version }}"
           git tag "v${{ steps.version.outputs.version }}"
+
+      - name: Bump to next snapshot
+        run: |
+          npm version patch --no-git-tag-version
+          NEXT=$(node -p "require('./package.json').version")
+          npm version "${NEXT}-snapshot" --no-git-tag-version
+          git add package.json
+          git commit -m "Bump to ${NEXT}-snapshot"
+
+      - name: Push changes
+        run: |
           git push origin main
           git push origin "v${{ steps.version.outputs.version }}"
