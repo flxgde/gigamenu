@@ -23,8 +23,9 @@
   "scripts": {
     "build:css": "npx @tailwindcss/cli -i ./src/styles.css -o ./dist/gigamenu/styles.css --minify",
     "build:lib": "ng-packagr",
-    "build": "npm run build:lib && npm run build:css",
-    "build:prod": "ng-packagr -c tsconfig.lib.prod.json && npm run build:css"
+    "build:patch-exports": "node -e \"const p='./dist/gigamenu/package.json';const pkg=require(p);pkg.exports['./styles.css']='./styles.css';require('fs').writeFileSync(p,JSON.stringify(pkg,null,2))\"",
+    "build": "npm run build:lib && npm run build:css && npm run build:patch-exports",
+    "build:prod": "ng-packagr -c tsconfig.lib.prod.json && npm run build:css && npm run build:patch-exports"
   },
   "sideEffects": false,
   "peerDependencies": {
