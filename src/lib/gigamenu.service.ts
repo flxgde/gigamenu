@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Router, Route, Routes } from '@angular/router';
+import { Router, Routes } from '@angular/router';
 import {
   GigamenuItem,
   GigamenuCommand,
@@ -12,6 +12,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class GigamenuService {
+  private _router?: Router;
+
   private readonly _items = signal<Map<string, GigamenuItem>>(new Map());
   private readonly _isOpen = signal(false);
   private readonly _config = signal<GigamenuConfig>(DEFAULT_CONFIG);
@@ -20,7 +22,21 @@ export class GigamenuService {
   readonly isOpen = this._isOpen.asReadonly();
   readonly config = this._config.asReadonly();
 
-  constructor(private readonly router: Router) {}
+  /**
+   * Set the router instance. Must be called before using navigation features.
+   */
+  setRouter(router: Router): void {
+    this._router = router;
+  }
+
+  private get router(): Router {
+    if (!this._router) {
+      throw new Error(
+        'GigamenuService: Router not set. Call setRouter() in your app initialization.'
+      );
+    }
+    return this._router;
+  }
 
   configure(config: Partial<GigamenuConfig>): void {
     this._config.update((current) => ({ ...current, ...config }));
@@ -62,11 +78,38 @@ export class GigamenuService {
   }
 
   registerPage(page: GigamenuPage): void {
+    // Extract parameter names from path (e.g., /users/:id -> ['id'])
+    const paramNames = this.extractParamNames(page.path);
+
     this.registerItem({
       ...page,
       category: 'page',
-      action: () => this.router.navigate([page.path]),
+      params: paramNames.length > 0 ? paramNames : undefined,
+      action: (args?: string) => {
+        let path = page.path;
+        if (paramNames.length > 0 && args) {
+          // Split args by whitespace to get parameter values
+          const argValues = args.trim().split(/\s+/);
+          // Replace each parameter with corresponding arg value
+          paramNames.forEach((param, index) => {
+            if (argValues[index]) {
+              path = path.replace(`:${param}`, argValues[index]);
+            }
+          });
+        }
+        this.router.navigate([path]);
+      },
     });
+  }
+
+  private extractParamNames(path: string): string[] {
+    const paramRegex = /:([^/]+)/g;
+    const params: string[] = [];
+    let match;
+    while ((match = paramRegex.exec(path)) !== null) {
+      params.push(match[1]);
+    }
+    return params;
   }
 
   discoverRoutes(options?: DiscoverRoutesOptions): void;
@@ -119,11 +162,16 @@ export class GigamenuService {
         }
 
         const label = routeInfo.title || this.pathToLabel(route.path || 'Home');
+        const paramNames = this.extractParamNames(`/${fullPath}`);
+        const hasParams = paramNames.length > 0;
+
         this.registerPage({
           id: `page:${fullPath || '/'}`,
-          label,
+          label, // Params will be rendered separately with colors
           path: `/${fullPath}`,
-          description: `Navigate to ${label}`,
+          description: hasParams
+            ? `Navigate to ${label} (requires: ${paramNames.join(', ')})`
+            : `Navigate to ${label}`,
         });
       }
 

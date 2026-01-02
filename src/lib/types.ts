@@ -12,7 +12,18 @@ export interface GigamenuItem {
   category: GigamenuItemCategory;
   /** Action to execute. Receives args string if user typed text after the separator. */
   action: (args?: string) => void;
+  /** Required parameter names for this item (e.g., ['id', 'commentId']) */
+  params?: string[];
 }
+
+/** Colors for parameter highlighting */
+export const PARAM_COLORS = [
+  'text-blue-500 dark:text-blue-400',
+  'text-green-500 dark:text-green-400',
+  'text-orange-500 dark:text-orange-400',
+  'text-pink-500 dark:text-pink-400',
+  'text-cyan-500 dark:text-cyan-400',
+] as const;
 
 export interface GigamenuPage extends Omit<GigamenuItem, 'category' | 'action'> {
   path: string;

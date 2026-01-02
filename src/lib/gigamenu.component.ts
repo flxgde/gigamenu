@@ -14,7 +14,7 @@ import {
 import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { GigamenuService } from './gigamenu.service';
 import { FrecencyService } from './frecency.service';
-import { GigamenuItem } from './types';
+import { GigamenuItem, PARAM_COLORS } from './types';
 import {
   GigamenuItemTemplate,
   GigamenuEmptyTemplate,
@@ -71,6 +71,40 @@ export class GigamenuComponent {
     if (sepIndex === -1) return '';
     return q.substring(sepIndex + separator.length);
   });
+
+  /** Whether the query contains a separator (for display purposes) */
+  protected readonly hasSeparator = computed(() => {
+    const q = this.query();
+    const separator = this.service.config().argSeparator ?? ' ';
+    return q.includes(separator);
+  });
+
+  /** Parsed arguments as array */
+  protected readonly argsArray = computed(() => {
+    const args = this.args();
+    if (!args) return [];
+    return args.split(/\s+/).filter(Boolean);
+  });
+
+  /** Currently selected item */
+  protected readonly selectedItem = computed(() => {
+    const items = this.filteredItems();
+    const index = this.selectedIndex();
+    return items[index] ?? null;
+  });
+
+  /** Whether the selected item can be executed (has all required params) */
+  protected readonly canExecute = computed(() => {
+    const item = this.selectedItem();
+    if (!item) return false;
+    if (!item.params || item.params.length === 0) return true;
+    return this.argsArray().length >= item.params.length;
+  });
+
+  /** Get color class for a parameter index */
+  protected getParamColor(index: number): string {
+    return PARAM_COLORS[index % PARAM_COLORS.length];
+  }
 
   protected readonly filteredItems = computed(() => {
     const searchTerm = this.searchTerm().toLowerCase().trim();
@@ -164,9 +198,11 @@ export class GigamenuComponent {
 
       case 'Enter':
         event.preventDefault();
-        const selected = items[this.selectedIndex()];
-        if (selected) {
-          this.executeItem(selected);
+        if (this.canExecute()) {
+          const selected = items[this.selectedIndex()];
+          if (selected) {
+            this.executeItem(selected);
+          }
         }
         break;
 
@@ -233,6 +269,7 @@ export class GigamenuComponent {
       $implicit: this.query(),
       searchTerm: this.searchTerm(),
       args: this.args(),
+      hasSeparator: this.hasSeparator(),
       onQueryChange: (value: string) => this.query.set(value),
       onKeydown: (event: KeyboardEvent) => this.onInputKeydown(event),
       placeholder: this.service.config().placeholder ?? '',
@@ -252,6 +289,7 @@ export class GigamenuComponent {
       query: this.query(),
       searchTerm: this.searchTerm(),
       args: this.args(),
+      hasSeparator: this.hasSeparator(),
       selectedIndex: this.selectedIndex(),
       executeItem: (item: GigamenuItem) => this.executeItem(item),
       setSelectedIndex: (index: number) => this.selectedIndex.set(index),

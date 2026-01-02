@@ -31,6 +31,8 @@ export interface GigamenuHeaderContext {
   searchTerm: string;
   /** The arguments (after separator) */
   args: string;
+  /** Whether the query contains a separator */
+  hasSeparator: boolean;
   /** Callback to update the query */
   onQueryChange: (value: string) => void;
   /** Callback for keydown events */
@@ -155,6 +157,8 @@ export interface GigamenuPanelContext {
   searchTerm: string;
   /** The arguments (after separator) */
   args: string;
+  /** Whether the query contains a separator */
+  hasSeparator: boolean;
   /** Currently selected index */
   selectedIndex: number;
   /** Callback to execute an item */
