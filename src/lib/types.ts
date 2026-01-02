@@ -39,6 +39,8 @@ export interface GigamenuConfig {
   autoDiscoverRoutes?: boolean;
   /** Separator between search query and arguments (default: ' ') */
   argSeparator?: string;
+  /** CSS class name for dark mode (default: 'dark') */
+  darkModeClass?: string;
 }
 
 export const DEFAULT_CONFIG: GigamenuConfig = {
@@ -46,6 +48,7 @@ export const DEFAULT_CONFIG: GigamenuConfig = {
   maxResults: 10,
   autoDiscoverRoutes: true,
   argSeparator: ' ',
+  darkModeClass: 'dark',
 };
 
 /**

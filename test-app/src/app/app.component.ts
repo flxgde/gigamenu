@@ -49,7 +49,7 @@ export class AppComponent implements OnInit {
       icon: '🌓',
       keywords: ['dark', 'light', 'mode'],
       action: () => {
-        document.documentElement.classList.toggle('dark');
+        this.gigamenu.toggleDarkMode();
       },
     });
 

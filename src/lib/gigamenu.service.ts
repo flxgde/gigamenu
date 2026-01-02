@@ -54,6 +54,11 @@ export class GigamenuService {
     this._isOpen.update((v) => !v);
   }
 
+  toggleDarkMode(): void {
+    const darkModeClass = this._config().darkModeClass ?? 'dark';
+    document.documentElement.classList.toggle(darkModeClass);
+  }
+
   registerItem(item: GigamenuItem): void {
     this._items.update((items) => {
       const newItems = new Map(items);
